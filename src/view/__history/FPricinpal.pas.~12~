@@ -253,7 +253,12 @@ begin
       Exit;
     end;
   end;
+<<<<<<< HEAD
+  //testestesteste
+  //adadnakwldjçawlkjd ççç
+=======
 
+>>>>>>> parent of 3d2874e (ServerMobile TESTEVersao)
   RegistraRotaProduto; // ← Rotas externas da unit RotaProduto
   THorse.Listen(Porta);
 
