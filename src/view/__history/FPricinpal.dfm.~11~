@@ -21,8 +21,6 @@ object FormPrincipal: TFormPrincipal
     Height = 459
     Align = alClient
     TabOrder = 0
-    ExplicitWidth = 543
-    ExplicitHeight = 451
     object SpeedButtonIniciar: TSpeedButton
       Left = 451
       Top = 426
@@ -99,7 +97,7 @@ object FormPrincipal: TFormPrincipal
       Left = 223
       Top = 416
       Width = 22
-      Height = 23
+      Height = 27
       Caption = ' '#9604
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clRed
@@ -289,7 +287,6 @@ object FormPrincipal: TFormPrincipal
       Align = alTop
       Caption = 'Atualiza'#231#245'es'
       TabOrder = 1
-      ExplicitWidth = 541
       object MemoCentral: TMemo
         AlignWithMargins = True
         Left = 5
@@ -298,7 +295,7 @@ object FormPrincipal: TFormPrincipal
         Height = 216
         Align = alBottom
         TabOrder = 0
-        ExplicitWidth = 531
+        ExplicitTop = 9
       end
     end
     object EvPanel1: TEvPanel

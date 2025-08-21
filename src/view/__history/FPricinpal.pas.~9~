@@ -253,7 +253,6 @@ begin
       Exit;
     end;
   end;
-  //testestesteste
 
   RegistraRotaProduto; // ← Rotas externas da unit RotaProduto
   THorse.Listen(Porta);
