@@ -1,0 +1,275 @@
+﻿unit FPricinpal;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, FireDAC.Stan.Intf, FireDAC.Stan.Option,
+  FireDAC.Stan.Error, FireDAC.UI.Intf, FireDAC.Phys.Intf, FireDAC.Stan.Def,
+  FireDAC.Stan.Pool, FireDAC.Stan.Async, FireDAC.Phys, FireDAC.VCLUI.Wait,
+  Vcl.ExtCtrls, Data.DB, FireDAC.Comp.Client, Vcl.StdCtrls, EEdBtn, EPanel,
+  Vcl.Buttons, Vcl.ComCtrls, FireDAC.Phys.FB, FireDAC.Phys.FBDef,Horse, EMsgDlg,  System.IniFiles,System.IOUtils,
+  FireDAC.Phys.IBBase,  Horse.Jhonson,
+  System.JSON, FireDAC.Stan.Param, FireDAC.DatS, FireDAC.DApt.Intf,
+  FireDAC.DApt, FireDAC.Comp.DataSet, Vcl.Imaging.pngimage, ETrayIc, Vcl.Menus;
+
+type
+  TFormPrincipal = class(TForm)
+    FDConnectionBunker: TFDConnection;
+    PNLCENTRAL: TPanel;
+    GroupBox1: TGroupBox;
+    GroupBox: TGroupBox;
+    ETDBNTBUTO: TEvEditBtn;
+    SpeedButton1: TSpeedButton;
+    EvPanel1: TEvPanel;
+    OpenDialogBanco: TOpenDialog;
+    EditServidor: TEdit;
+    EditPorta: TEdit;
+    Label2: TLabel;
+    LabelServidor: TLabel;
+    LabelPorta: TLabel;
+    LabelUsuario: TLabel;
+    EditUsuario: TEdit;
+    EditSenha: TEdit;
+    LabelSenha: TLabel;
+    SpeedButtonIniciar: TSpeedButton;
+    SpeedButtonEsconder: TSpeedButton;
+    MemoCentral: TMemo;
+    LabelBancodeDados: TLabel;
+    Label3: TLabel;
+    LabelStatusBanco: TLabel;
+    LabelStatusApi: TLabel;
+    EditPortaServico: TEdit;
+    LabelPortaServico: TLabel;
+    FDPhysFBDriverLink1: TFDPhysFBDriverLink;
+    FDQuerypProdutos: TFDQuery;
+    Image1: TImage;
+    Image2: TImage;
+    Label1: TLabel;
+    Label4: TLabel;
+    EvTrayIconEsconderAPI: TEvTrayIcon;
+    PopupMenuRestaurarAPI: TPopupMenu;
+    Restaurar1: TMenuItem;
+    PopupMenuRestaurarAPI1: TMenuItem;
+    procedure ETDBNTBUTOBtnClick(Sender: TObject);
+    procedure SpeedButtonIniciarClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure SpeedButton1Click(Sender: TObject);
+    procedure Restaurar1Click(Sender: TObject);
+    procedure PopupMenuRestaurarAPI1Click(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    ServidorAtivo : Integer;
+  end;
+
+var
+  FormPrincipal: TFormPrincipal;
+
+implementation
+
+{$R *.dfm}
+
+uses RProduto;
+
+
+
+
+
+
+
+procedure TFormPrincipal.ETDBNTBUTOBtnClick(Sender: TObject);
+begin
+  OpenDialogBanco.Execute;
+  ETDBNTBUTO.Text:= OpenDialogBanco.FileName;
+end;
+
+procedure TFormPrincipal.FormCreate(Sender: TObject);
+var
+  Ini: TIniFile;
+  CaminhoIni: string;
+  Servidor, Porta, Database, Usuario, Senha, PortaAPI: string;
+begin
+  ServidorAtivo := 0;
+  CaminhoIni := TPath.Combine(ExtractFilePath(ParamStr(0)), 'parametros.ini');
+
+  if FileExists(CaminhoIni) then
+  begin
+    Ini := TIniFile.Create(CaminhoIni);
+    try
+      if Ini.SectionExists('ParametrosAPIBunker') then
+      begin
+        // Lê valores do INI
+        Servidor  := Trim(Ini.ReadString('ParametrosAPIBunker', 'Servidor', ''));
+        Porta     := Trim(Ini.ReadString('ParametrosAPIBunker', 'Porta', '3050'));
+        Database  := Trim(Ini.ReadString('ParametrosAPIBunker', 'Database', ''));
+        Usuario   := Trim(Ini.ReadString('ParametrosAPIBunker', 'Usuario', ''));
+        Senha     := Trim(Ini.ReadString('ParametrosAPIBunker', 'Senha', ''));
+        PortaAPI  := Trim(Ini.ReadString('ParametrosAPIBunker', 'PortaAPI', '9000'));
+
+        // Preenche os TEdit
+        EditServidor.Text := Servidor;
+        EditPorta.Text := Porta;
+        ETDBNTBUTO.Text := Database;
+        EditUsuario.Text := Usuario;
+        EditSenha.Text := Senha;
+        EditPortaServico.Text := PortaAPI;
+
+        // Tenta conectar
+        try
+          with FDConnectionBunker do
+          begin
+            Close;
+            Params.Clear;
+            Params.Add('DriverID=FB');
+            Params.Add('Server=' + Servidor);
+            Params.Add('Port=' + Porta);
+            Params.Add('Database=' + Database);
+            Params.Add('User_Name=' + Usuario);
+            Params.Add('Password=' + Senha);
+            Params.Add('OSAuthent=No');
+            LoginPrompt := False;
+            Open;
+
+            MemoCentral.Lines.Add('✅ Conexão com o banco Bunker estabelecida com sucesso.');
+            LabelStatusBanco.Font.Color := clGreen;
+            SpeedButtonIniciar.Enabled := True;
+          end;
+        except
+          on E: Exception do
+          begin
+            MemoCentral.Lines.Add('❌ Erro ao conectar com o banco Bunker: ' + E.Message);
+            LabelStatusBanco.Font.Color := clRed;
+            SpeedButtonIniciar.Enabled := False;
+          end;
+        end;
+      end;
+    finally
+      Ini.Free;
+    end;
+  end
+  else
+  begin
+    MemoCentral.Lines.Add('⚠️ parametros.ini não encontrado.');
+    LabelStatusBanco.Font.Color := clRed;
+  end;
+end;
+
+
+
+
+
+procedure TFormPrincipal.PopupMenuRestaurarAPI1Click(Sender: TObject);
+begin
+ Application.Terminate;
+end;
+
+procedure TFormPrincipal.Restaurar1Click(Sender: TObject);
+begin
+   EvTrayIconEsconderAPI.
+  Application.BringToFront;
+end;
+
+procedure TFormPrincipal.SpeedButton1Click(Sender: TObject);
+var
+  Ini: TIniFile;
+  CaminhoIni: string;
+begin
+  // Conectar ao banco
+  with FDConnectionBunker do
+  begin
+    Close;
+    Params.Clear;
+    Params.Add('DriverID=FB');
+    Params.Add('Server=' + EditServidor.Text);
+    Params.Add('Port=' + EditPorta.Text);
+    Params.Add('Database=' + ETDBNTBUTO.Text);
+    Params.Add('User_Name=' + EditUsuario.Text);
+    Params.Add('Password=' + EditSenha.Text);
+    Params.Add('OSAuthent=No');
+    LoginPrompt := False;
+
+    try
+      Open;
+      if Connected then
+      begin
+        LabelStatusBanco.Font.Color := clGreen;
+        MemoCentral.Lines.Add('✅ Conexão do Banco de Dados realizada com sucesso!');
+        SpeedButtonIniciar.Enabled := True;
+      end;
+    except
+      on E: Exception do
+      begin
+        LabelStatusBanco.Font.Color := clRed;
+        MemoCentral.Lines.Add('❌ Erro ao conectar: ' + E.Message);
+        SpeedButtonIniciar.Enabled := False;
+        Exit;
+      end;
+    end;
+  end;
+
+  // Salvar parâmetros no .ini
+  CaminhoIni := TPath.Combine(ExtractFilePath(ParamStr(0)), 'parametros.ini');
+  Ini := TIniFile.Create(CaminhoIni);
+  try
+    Ini.WriteString('ParametrosAPIBunker', 'Servidor', EditServidor.Text);
+    Ini.WriteString('ParametrosAPIBunker', 'Porta', EditPorta.Text);
+    Ini.WriteString('ParametrosAPIBunker', 'Database', ETDBNTBUTO.Text);
+    Ini.WriteString('ParametrosAPIBunker', 'Usuario', EditUsuario.Text);
+    Ini.WriteString('ParametrosAPIBunker', 'Senha', EditSenha.Text);
+    Ini.WriteString('ParametrosAPIBunker', 'PortaAPI', EditPortaServico.Text);
+    MemoCentral.Lines.Add('💾 Parâmetros salvos com sucesso!');
+  finally
+    Ini.Free;
+  end;
+end;
+
+
+procedure TFormPrincipal.SpeedButtonIniciarClick(Sender: TObject);
+var
+  Porta: Integer;
+  IP: string;
+begin
+  if ServidorAtivo = 1 then
+  begin
+    if MessageDlg('Serviço está em execução. Deseja Pausar o Serviço?', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+    begin
+      THorse.StopListen;
+      LabelStatusApi.Font.Color := clRed;
+      ServidorAtivo := 0;
+      MemoCentral.Lines.Add('Serviço Pausado...');
+      MemoCentral.Lines.Add('Aguardando Inicialização...');
+      SpeedButtonIniciar.Caption := 'Iniciar';
+      SpeedButton1.Enabled := True;
+    end;
+    Exit;
+  end;
+
+  try
+    Porta := StrToInt(Trim(EditPortaServico.Text));
+  except
+    on E: Exception do
+    begin
+      ShowMessage('Porta inválida: ' + E.Message);
+      Exit;
+    end;
+  end;
+
+  RegistraRotaProduto; // ← Rotas externas da unit RotaProduto
+  THorse.Listen(Porta);
+
+  MemoCentral.Lines.Add('Servidor Iniciado na porta: ' + IntToStr(Porta));
+  LabelStatusApi.Font.Color := clGreen;
+  SpeedButtonIniciar.Caption := 'Pausar';
+  SpeedButton1.Enabled := False;
+  ServidorAtivo := 1;
+end;
+
+
+
+
+
+
+
+end.

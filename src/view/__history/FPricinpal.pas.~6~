@@ -1,0 +1,330 @@
+﻿unit FPricinpal;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, FireDAC.Stan.Intf, FireDAC.Stan.Option,
+  FireDAC.Stan.Error, FireDAC.UI.Intf, FireDAC.Phys.Intf, FireDAC.Stan.Def,
+  FireDAC.Stan.Pool, FireDAC.Stan.Async, FireDAC.Phys, FireDAC.VCLUI.Wait,
+  Vcl.ExtCtrls, Data.DB, FireDAC.Comp.Client, Vcl.StdCtrls, EEdBtn, EPanel,
+  Vcl.Buttons, Vcl.ComCtrls, FireDAC.Phys.FB, FireDAC.Phys.FBDef,Horse, EMsgDlg,  System.IniFiles,System.IOUtils,
+  FireDAC.Phys.IBBase,  Horse.Jhonson,
+  System.JSON, FireDAC.Stan.Param, FireDAC.DatS, FireDAC.DApt.Intf,
+  FireDAC.DApt, FireDAC.Comp.DataSet, Vcl.Imaging.pngimage;
+
+type
+  TForm1 = class(TForm)
+    FDConnectionBunker: TFDConnection;
+    PNLCENTRAL: TPanel;
+    GroupBox1: TGroupBox;
+    GroupBox: TGroupBox;
+    ETDBNTBUTO: TEvEditBtn;
+    SpeedButton1: TSpeedButton;
+    EvPanel1: TEvPanel;
+    OpenDialogBanco: TOpenDialog;
+    EditServidor: TEdit;
+    EditPorta: TEdit;
+    Label2: TLabel;
+    LabelServidor: TLabel;
+    LabelPorta: TLabel;
+    LabelUsuario: TLabel;
+    EditUsuario: TEdit;
+    EditSenha: TEdit;
+    LabelSenha: TLabel;
+    SpeedButtonIniciar: TSpeedButton;
+    SpeedButtonEsconder: TSpeedButton;
+    MemoCentral: TMemo;
+    LabelBancodeDados: TLabel;
+    Label3: TLabel;
+    LabelStatusBanco: TLabel;
+    LabelStatusApi: TLabel;
+    EditPortaServico: TEdit;
+    LabelPortaServico: TLabel;
+    FDPhysFBDriverLink1: TFDPhysFBDriverLink;
+    FDQuerypProdutos: TFDQuery;
+    Image1: TImage;
+    Image2: TImage;
+    Label1: TLabel;
+    Label4: TLabel;
+    procedure ETDBNTBUTOBtnClick(Sender: TObject);
+    procedure SpeedButtonIniciarClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure SpeedButton1Click(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    ServidorAtivo : Integer;
+  end;
+
+var
+  Form1: TForm1;
+
+implementation
+
+{$R *.dfm}
+
+
+
+procedure TForm1.ETDBNTBUTOBtnClick(Sender: TObject);
+begin
+  OpenDialogBanco.Execute;
+  ETDBNTBUTO.Text:= OpenDialogBanco.FileName;
+end;
+
+procedure TForm1.FormCreate(Sender: TObject);
+var
+  Ini: TIniFile;
+  CaminhoIni: string;
+  Servidor, Porta, Database, Usuario, Senha, PortaAPI: string;
+begin
+  ServidorAtivo := 0;
+  CaminhoIni := TPath.Combine(ExtractFilePath(ParamStr(0)), 'parametros.ini');
+
+  if FileExists(CaminhoIni) then
+  begin
+    Ini := TIniFile.Create(CaminhoIni);
+    try
+      if Ini.SectionExists('ParametrosAPIBunker') then
+      begin
+        // Lê valores do INI
+        Servidor  := Trim(Ini.ReadString('ParametrosAPIBunker', 'Servidor', ''));
+        Porta     := Trim(Ini.ReadString('ParametrosAPIBunker', 'Porta', '3050'));
+        Database  := Trim(Ini.ReadString('ParametrosAPIBunker', 'Database', ''));
+        Usuario   := Trim(Ini.ReadString('ParametrosAPIBunker', 'Usuario', ''));
+        Senha     := Trim(Ini.ReadString('ParametrosAPIBunker', 'Senha', ''));
+        PortaAPI  := Trim(Ini.ReadString('ParametrosAPIBunker', 'PortaAPI', '9000'));
+
+        // Preenche os TEdit
+        EditServidor.Text := Servidor;
+        EditPorta.Text := Porta;
+        ETDBNTBUTO.Text := Database;
+        EditUsuario.Text := Usuario;
+        EditSenha.Text := Senha;
+        EditPortaServico.Text := PortaAPI;
+
+        // Tenta conectar
+        try
+          with FDConnectionBunker do
+          begin
+            Close;
+            Params.Clear;
+            Params.Add('DriverID=FB');
+            Params.Add('Server=' + Servidor);
+            Params.Add('Port=' + Porta);
+            Params.Add('Database=' + Database);
+            Params.Add('User_Name=' + Usuario);
+            Params.Add('Password=' + Senha);
+            Params.Add('OSAuthent=No');
+            LoginPrompt := False;
+            Open;
+
+            MemoCentral.Lines.Add('✅ Conexão com o banco Bunker estabelecida com sucesso.');
+            LabelStatusBanco.Font.Color := clGreen;
+            SpeedButtonIniciar.Enabled := True;
+          end;
+        except
+          on E: Exception do
+          begin
+            MemoCentral.Lines.Add('❌ Erro ao conectar com o banco Bunker: ' + E.Message);
+            LabelStatusBanco.Font.Color := clRed;
+            SpeedButtonIniciar.Enabled := False;
+          end;
+        end;
+      end;
+    finally
+      Ini.Free;
+    end;
+  end
+  else
+  begin
+    MemoCentral.Lines.Add('⚠️ parametros.ini não encontrado.');
+    LabelStatusBanco.Font.Color := clRed;
+  end;
+end;
+
+
+
+
+
+procedure TForm1.SpeedButton1Click(Sender: TObject);
+var
+  Ini: TIniFile;
+  CaminhoIni: string;
+begin
+  // Conectar ao banco
+  with FDConnectionBunker do
+  begin
+    Close;
+    Params.Clear;
+    Params.Add('DriverID=FB');
+    Params.Add('Server=' + EditServidor.Text);
+    Params.Add('Port=' + EditPorta.Text);
+    Params.Add('Database=' + ETDBNTBUTO.Text);
+    Params.Add('User_Name=' + EditUsuario.Text);
+    Params.Add('Password=' + EditSenha.Text);
+    Params.Add('OSAuthent=No');
+    LoginPrompt := False;
+
+    try
+      Open;
+      if Connected then
+      begin
+        LabelStatusBanco.Font.Color := clGreen;
+        MemoCentral.Lines.Add('✅ Conexão do Banco de Dados realizada com sucesso!');
+        SpeedButtonIniciar.Enabled := True;
+      end;
+    except
+      on E: Exception do
+      begin
+        LabelStatusBanco.Font.Color := clRed;
+        MemoCentral.Lines.Add('❌ Erro ao conectar: ' + E.Message);
+        SpeedButtonIniciar.Enabled := False;
+        Exit;
+      end;
+    end;
+  end;
+
+  // Salvar parâmetros no .ini
+  CaminhoIni := TPath.Combine(ExtractFilePath(ParamStr(0)), 'parametros.ini');
+  Ini := TIniFile.Create(CaminhoIni);
+  try
+    Ini.WriteString('ParametrosAPIBunker', 'Servidor', EditServidor.Text);
+    Ini.WriteString('ParametrosAPIBunker', 'Porta', EditPorta.Text);
+    Ini.WriteString('ParametrosAPIBunker', 'Database', ETDBNTBUTO.Text);
+    Ini.WriteString('ParametrosAPIBunker', 'Usuario', EditUsuario.Text);
+    Ini.WriteString('ParametrosAPIBunker', 'Senha', EditSenha.Text);
+    Ini.WriteString('ParametrosAPIBunker', 'PortaAPI', EditPortaServico.Text);
+    MemoCentral.Lines.Add('💾 Parâmetros salvos com sucesso!');
+  finally
+    Ini.Free;
+  end;
+end;
+
+
+procedure TForm1.SpeedButtonIniciarClick(Sender: TObject);
+var
+  Porta: Integer;
+  IP: string;
+begin
+  if ServidorAtivo = 1 then
+  begin
+    if MessageDlg('Serviço está em execução. Deseja Pausar o Serviço?', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+    begin
+      THorse.StopListen;
+      LabelStatusApi.Font.Color := clRed;
+      ServidorAtivo := 0;
+      MemoCentral.Lines.Add('Serviço Pausado...');
+      MemoCentral.Lines.Add('Aguardando Inicialização...');
+      SpeedButtonIniciar.Caption := 'Iniciar';
+      SpeedButton1.Enabled := True;
+    end;
+    Exit;
+  end;
+
+  try
+    Porta := StrToInt(Trim(EditPortaServico.Text));
+  except
+    on E: Exception do
+    begin
+      ShowMessage('Porta inválida: ' + E.Message);
+      Exit;
+    end;
+  end;
+
+  THorse.Use(Jhonson());
+
+  // ROTA PING
+  THorse.Get('/ping',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    begin
+      IP := Req.RawWebRequest.RemoteAddr;
+      Res.Send('API GET Produtos');
+      MemoCentral.Lines.Add(Format('%s - Conexão recebida de IP: %s', [DateTimeToStr(Now), IP]));
+    end);
+
+  THorse.Post('/ping',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      LBody: TJSONObject;
+    begin
+      IP := Req.RawWebRequest.RemoteAddr;
+      LBody := Req.Body<TJSONObject>;
+      Res.Send<TJSONObject>(LBody);
+      MemoCentral.Lines.Add(Format('%s - Conexão recebida de IP: %s', [DateTimeToStr(Now), IP]));
+    end);
+
+  // ROTA: GET /clientes → lista todos
+  THorse.Get('/produto',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+
+      JSON: TJSONArray;
+      Obj: TJSONObject;
+    begin
+      FDQuerypProdutos.Close;
+      FDQuerypProdutos.SQL.Clear;
+      FDQuerypProdutos.SQL.Text := 'SELECT CODIGO, CODBARRA, DESCRICAO, QTD_ATUAL FROM PRODUTO';
+      FDQuerypProdutos.Open;
+
+      JSON := TJSONArray.Create;
+      while not FDQuerypProdutos.Eof do
+      begin
+        Obj := TJSONObject.Create;
+        Obj.AddPair('CODIGO', TJSONNumber.Create(FDQuerypProdutos.FieldByName('CODIGO').AsInteger));
+        Obj.AddPair('CODBARRA', FDQuerypProdutos.FieldByName('CODBARRA').AsString);
+        Obj.AddPair('DESCRICAO', FDQuerypProdutos.FieldByName('DESCRICAO').AsString);
+        Obj.AddPair('ESTOQUE', FDQuerypProdutos.FieldByName('QTD_ATUAL').AsString);
+        JSON.AddElement(Obj);
+        FDQuerypProdutos.Next;
+      end;
+
+      Res.Send<TJSONArray>(JSON);
+      IP := Req.RawWebRequest.RemoteAddr;
+      MemoCentral.Lines.Add(Format('%s - Cunsumo Rota Produto IP: %s', [DateTimeToStr(Now), IP]));
+    end);
+
+  // ROTA: GET /cliente/:id → busca por código
+  THorse.Get('/produto/:id',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      LID: string;
+      Obj: TJSONObject;
+    begin
+      LID := Req.Params['id'];
+      FDQuerypProdutos.Close;
+      FDQuerypProdutos.SQL.Clear;
+      FDQuerypProdutos.SQL.Text := 'SELECT CODIGO, CODBARRA, DESCRICAO, QTD_ATUAL FROM PRODUTO WHERE CODIGO = :CODIGO';
+      FDQuerypProdutos.ParamByName('CODIGO').AsInteger := StrToIntDef(LID, 0);
+      FDQuerypProdutos.Open;
+
+      if not FDQuerypProdutos.IsEmpty then
+      begin
+        Obj := TJSONObject.Create;
+        Obj.AddPair('CODIGO', TJSONNumber.Create(FDQuerypProdutos.FieldByName('CODIGO').AsInteger));
+        Obj.AddPair('CODBARRA', FDQuerypProdutos.FieldByName('CODBARRA').AsString);
+        Obj.AddPair('DESCRICAO', FDQuerypProdutos.FieldByName('DESCRICAO').AsString);
+        Obj.AddPair('ESTOQUE', FDQuerypProdutos.FieldByName('QTD_ATUAL').AsString);
+        Res.Send<TJSONObject>(Obj);
+      IP := Req.RawWebRequest.RemoteAddr;
+      MemoCentral.Lines.Add(Format('%s - Cunsumo Rota ProdutoID IP: %s', [DateTimeToStr(Now), IP]));
+      end
+      else
+        Res.Status(404).Send('Produto Selecionado não encontrado');
+    end);
+
+  // INICIAR OUVINTE
+  THorse.Listen(Porta);
+  MemoCentral.Lines.Add('Servidor Iniciado na porta: ' + IntToStr(Porta));
+  LabelStatusApi.Font.Color := clGreen;
+  SpeedButtonIniciar.Caption := 'Pausar';
+  SpeedButton1.Enabled := False;
+  ServidorAtivo := 1;
+end;
+
+
+
+
+
+end.

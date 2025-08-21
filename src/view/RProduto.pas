@@ -1,0 +1,95 @@
+unit RProduto;
+
+interface
+ procedure RegistraRotaProduto;
+implementation
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, FireDAC.Stan.Intf, FireDAC.Stan.Option,
+  FireDAC.Stan.Error, FireDAC.UI.Intf, FireDAC.Phys.Intf, FireDAC.Stan.Def,
+  FireDAC.Stan.Pool, FireDAC.Stan.Async, FireDAC.Phys, FireDAC.VCLUI.Wait,
+  Vcl.ExtCtrls, Data.DB, FireDAC.Comp.Client, Vcl.StdCtrls, EEdBtn, EPanel,
+  Vcl.Buttons, Vcl.ComCtrls, FireDAC.Phys.FB, FireDAC.Phys.FBDef,Horse, EMsgDlg,  System.IniFiles,System.IOUtils,
+  FireDAC.Phys.IBBase,  Horse.Jhonson,
+  System.JSON, FireDAC.Stan.Param, FireDAC.DatS, FireDAC.DApt.Intf,
+  FireDAC.DApt, FireDAC.Comp.DataSet, Vcl.Imaging.pngimage, FPricinpal;
+
+  procedure RegistraRotaProduto;
+var
+  IP: string;
+begin
+  // Middleware JSON
+  THorse.Use(Jhonson());
+
+
+  // ROTA PING - POST
+  THorse.Post('/ping',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      LBody: TJSONObject;
+    begin
+      IP := Req.RawWebRequest.RemoteAddr;
+      LBody := Req.Body<TJSONObject>;
+      Res.Send<TJSONObject>(LBody);
+      FormPrincipal.MemoCentral.Lines.Add(Format('%s - Conexão recebida de IP: %s', [DateTimeToStr(Now), IP]));
+    end);
+
+  // ROTA GET /produto
+  THorse.Get('/produto',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      JSON: TJSONArray;
+      Obj: TJSONObject;
+    begin
+      FormPrincipal.FDQuerypProdutos.Close;
+      FormPrincipal.FDQuerypProdutos.SQL.Text := 'SELECT CODIGO, CODBARRA, DESCRICAO, QTD_ATUAL FROM PRODUTO';
+      FormPrincipal.FDQuerypProdutos.Open;
+
+      JSON := TJSONArray.Create;
+      while not FormPrincipal.FDQuerypProdutos.Eof do
+      begin
+        Obj := TJSONObject.Create;
+        Obj.AddPair('CODIGO', TJSONNumber.Create(FormPrincipal.FDQuerypProdutos.FieldByName('CODIGO').AsInteger));
+        Obj.AddPair('CODBARRA', FormPrincipal.FDQuerypProdutos.FieldByName('CODBARRA').AsString);
+        Obj.AddPair('DESCRICAO', FormPrincipal.FDQuerypProdutos.FieldByName('DESCRICAO').AsString);
+        Obj.AddPair('ESTOQUE', FormPrincipal.FDQuerypProdutos.FieldByName('QTD_ATUAL').AsString);
+        JSON.AddElement(Obj);
+        FormPrincipal.FDQuerypProdutos.Next;
+      end;
+
+      Res.Send<TJSONArray>(JSON);
+      IP := Req.RawWebRequest.RemoteAddr;
+      FormPrincipal.MemoCentral.Lines.Add(Format('%s - Consumo Rota Produto IP: %s', [DateTimeToStr(Now), IP]));
+    end);
+
+  // ROTA GET /produto/:id
+  THorse.Get('/produto/:id',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      LID: string;
+      Obj: TJSONObject;
+    begin
+      LID := Req.Params['id'];
+      FormPrincipal.FDQuerypProdutos.Close;
+      FormPrincipal.FDQuerypProdutos.SQL.Text := 'SELECT CODIGO, CODBARRA, DESCRICAO, QTD_ATUAL FROM PRODUTO WHERE CODIGO = :CODIGO';
+      FormPrincipal.FDQuerypProdutos.ParamByName('CODIGO').AsInteger := StrToIntDef(LID, 0);
+      FormPrincipal.FDQuerypProdutos.Open;
+
+      if not FormPrincipal.FDQuerypProdutos.IsEmpty then
+      begin
+        Obj := TJSONObject.Create;
+        Obj.AddPair('CODIGO', TJSONNumber.Create(FormPrincipal.FDQuerypProdutos.FieldByName('CODIGO').AsInteger));
+        Obj.AddPair('CODBARRA', FormPrincipal.FDQuerypProdutos.FieldByName('CODBARRA').AsString);
+        Obj.AddPair('DESCRICAO', FormPrincipal.FDQuerypProdutos.FieldByName('DESCRICAO').AsString);
+        Obj.AddPair('ESTOQUE', FormPrincipal.FDQuerypProdutos.FieldByName('QTD_ATUAL').AsString);
+        Res.Send<TJSONObject>(Obj);
+        IP := Req.RawWebRequest.RemoteAddr;
+        FormPrincipal.MemoCentral.Lines.Add(Format('%s - Consumo Rota ProdutoID IP: %s', [DateTimeToStr(Now), IP]));
+      end
+      else
+        Res.Status(404).Send('Produto Selecionado não encontrado');
+    end);
+end;
+
+end.
