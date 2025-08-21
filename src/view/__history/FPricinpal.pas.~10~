@@ -254,7 +254,7 @@ begin
     end;
   end;
   //testestesteste
-  //adadnakwldjçawlkjd
+
   RegistraRotaProduto; // ← Rotas externas da unit RotaProduto
   THorse.Listen(Porta);
 
